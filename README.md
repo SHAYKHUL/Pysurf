@@ -1,2 +1,2 @@
-# pysurf
+# Pysurf
 pysurf is a simple web browser build in python 
