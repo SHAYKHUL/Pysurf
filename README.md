@@ -31,9 +31,7 @@ Follow the steps below to install and use the PyQt5 Web Browser.
 ### Installation
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-repo/pyqt5-web-browser.git
-   cd pyqt5-web-browser
-   ```
+   https://github.com/SHAYKHUL/Pysurf.git ```
 
 2. Install dependencies:
    ```bash
