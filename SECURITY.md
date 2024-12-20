@@ -56,7 +56,7 @@ Users are encouraged to always use the latest version of the browser for the mos
 If you discover a security vulnerability in the PyQt5 Web Browser, please report it immediately. We are committed to addressing all security issues promptly.
 
 ### How to Report:
-- Email: [security@yourdomain.com](mailto:security@yourdomain.com)
+- Email: [Shaykhul2004@gmail.cim](mailto: Shaykhul2004@gmail.com)
 - Subject: `Security Vulnerability Report - PyQt5 Web Browser`
 - Include:
   - A description of the vulnerability.
