@@ -228,7 +228,6 @@ class Browser(QMainWindow):
         def update_progress(received, total):
             if total > 0:
                 progress_value = int(received / total * 100)
-                print(f"Download progress: {progress_value}%")  # Debug print
                 progress_dialog.setValue(progress_value)
             else:
                 progress_dialog.setValue(0)
@@ -237,7 +236,7 @@ class Browser(QMainWindow):
         download.finished.connect(progress_dialog.close)
         download.finished.connect(lambda: QMessageBox.information(self, "Download Completed", f"Download finished: {download.path()}"))
         
-        progress_dialog.exec_()
+        progress_dialog.show()
 
     def show_downloads(self):
         downloads_dialog = QDialog(self)
