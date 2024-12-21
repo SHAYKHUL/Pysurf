@@ -17,7 +17,7 @@ A lightweight, feature-rich, and customizable web browser built using Python and
 ---
 
 ## **Preview**
-![Browser Icon](resources/icon.png)
+![browsericon](https://github.com/user-attachments/assets/b3be6f4a-61de-4120-871d-22ebc16b42d7)
 
 ---
 
