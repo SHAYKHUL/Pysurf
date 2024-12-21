@@ -30,39 +30,44 @@ class Browser(QMainWindow):
         self.tabs.setContextMenuPolicy(Qt.CustomContextMenu)
         self.tabs.customContextMenuRequested.connect(self.tab_context_menu)
 
+        # Add new tab button to the tab bar
+        self.tabs.setCornerWidget(self.create_new_tab_button(), Qt.TopRightCorner)
+
         self.setCentralWidget(self.tabs)
 
         # Create a navigation bar
         navbar = QToolBar()
+        navbar.setStyleSheet("background-color: #f0f0f0; padding: 5px;")
         self.addToolBar(navbar)
 
         # Add back button
-        back_button = QAction('Back', self)
+        back_button = QAction(self.style().standardIcon(QStyle.SP_ArrowBack), 'Back', self)
         back_button.triggered.connect(lambda: self.tabs.currentWidget().back())
         navbar.addAction(back_button)
 
         # Add forward button
-        forward_button = QAction('Forward', self)
+        forward_button = QAction(self.style().standardIcon(QStyle.SP_ArrowForward), 'Forward', self)
         forward_button.triggered.connect(lambda: self.tabs.currentWidget().forward())
         navbar.addAction(forward_button)
 
         # Add reload button
-        reload_button = QAction('Reload', self)
+        reload_button = QAction(self.style().standardIcon(QStyle.SP_BrowserReload), 'Reload', self)
         reload_button.triggered.connect(lambda: self.tabs.currentWidget().reload())
         navbar.addAction(reload_button)
 
         # Add home button
-        home_button = QAction('Home', self)
+        home_button = QAction(self.style().standardIcon(QStyle.SP_DirHomeIcon), 'Home', self)
         home_button.triggered.connect(self.navigate_home)
         navbar.addAction(home_button)
 
         # Add stop button
-        stop_button = QAction('Stop', self)
+        stop_button = QAction(self.style().standardIcon(QStyle.SP_BrowserStop), 'Stop', self)
         stop_button.triggered.connect(lambda: self.tabs.currentWidget().stop())
         navbar.addAction(stop_button)
 
         # Add address bar
         self.url_bar = QLineEdit(self)
+        self.url_bar.setStyleSheet("padding: 5px;")
         self.url_bar.returnPressed.connect(self.load_url_from_address_bar)
         navbar.addWidget(self.url_bar)
 
@@ -72,34 +77,29 @@ class Browser(QMainWindow):
         navbar.addWidget(self.search_engine)
 
         # Add bookmarks button
-        bookmarks_button = QAction('Bookmarks', self)
+        bookmarks_button = QAction(self.style().standardIcon(QStyle.SP_FileDialogListView), 'Bookmarks', self)
         bookmarks_button.triggered.connect(self.show_bookmarks)
         navbar.addAction(bookmarks_button)
 
         # Add dark mode toggle
-        self.dark_mode = QAction('Dark Mode', self, checkable=True)
+        self.dark_mode = QAction(self.style().standardIcon(QStyle.SP_DialogYesButton), 'Dark Mode', self, checkable=True)
         self.dark_mode.triggered.connect(self.toggle_dark_mode)
         navbar.addAction(self.dark_mode)
 
         # Add download manager button
-        download_manager_button = QAction('Downloads', self)
+        download_manager_button = QAction(self.style().standardIcon(QStyle.SP_DriveHDIcon), 'Downloads', self)
         download_manager_button.triggered.connect(self.show_downloads)
         navbar.addAction(download_manager_button)
 
         # Add history button
-        history_button = QAction('History', self)
+        history_button = QAction(self.style().standardIcon(QStyle.SP_FileDialogDetailedView), 'History', self)
         history_button.triggered.connect(self.show_history)
         navbar.addAction(history_button)
 
         # Add settings button
-        settings_button = QAction('Settings', self)
+        settings_button = QAction(self.style().standardIcon(QStyle.SP_FileDialogContentsView), 'Settings', self)
         settings_button.triggered.connect(self.show_settings)
         navbar.addAction(settings_button)
-
-        # Add new tab button
-        new_tab_button = QAction('New Tab', self)
-        new_tab_button.triggered.connect(self.add_new_tab)
-        navbar.addAction(new_tab_button)
 
         # Initialize bookmarks
         self.bookmarks = []
@@ -116,6 +116,12 @@ class Browser(QMainWindow):
         # Add status bar
         self.status = QStatusBar()
         self.setStatusBar(self.status)
+
+    def create_new_tab_button(self):
+        new_tab_button = QPushButton("+")
+        new_tab_button.setFixedSize(30, 30)
+        new_tab_button.clicked.connect(self.add_new_tab)
+        return new_tab_button
 
     def add_new_tab(self, qurl=None, label="Blank"):
         if qurl is None or not isinstance(qurl, QUrl):
