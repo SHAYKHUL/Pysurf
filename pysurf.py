@@ -4,118 +4,90 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtWebEngineWidgets import *
 from PyQt5.QtGui import QIcon
 
-def main():
-    QCoreApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
-    app = QApplication(sys.argv)
-    window = Browser()
-    window.show()
-    sys.exit(app.exec_())
-
 class Browser(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.init_ui()
+        self.init_navigation_bar()
+        self.init_signals()
 
-        # Set up the browser window
+    def init_ui(self):
         self.setWindowTitle("Python Web Browser")
         self.setGeometry(100, 100, 1024, 768)
-        self.setWindowIcon(QIcon('C:/Users/USER/Documents/khulshay/Web browser/browsericon.png'))  # Update the icon path
+        self.setWindowIcon(QIcon('path/to/your/icon.png'))  # Update the icon path
 
-        # Create tab widget
         self.tabs = QTabWidget()
         self.tabs.setDocumentMode(True)
-        self.tabs.tabBarDoubleClicked.connect(self.tab_open_doubleclick)
-        self.tabs.currentChanged.connect(self.current_tab_changed)
         self.tabs.setTabsClosable(True)
-        self.tabs.tabCloseRequested.connect(self.close_current_tab)
-        self.tabs.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.tabs.customContextMenuRequested.connect(self.tab_context_menu)
-
-        # Add new tab button to the tab bar
-        self.tabs.setCornerWidget(self.create_new_tab_button(), Qt.TopRightCorner)
-
         self.setCentralWidget(self.tabs)
 
-        # Create a navigation bar
+        self.status = QStatusBar()
+        self.setStatusBar(self.status)
+
+        self.bookmarks = []
+        self.history = []
+        self.downloads = []
+
+        self.add_new_tab(QUrl('http://www.google.com'), 'Homepage')
+
+    def init_navigation_bar(self):
         navbar = QToolBar()
-        navbar.setStyleSheet("background-color: #f0f0f0; padding: 5px;")
         self.addToolBar(navbar)
 
-        # Add back button
         back_button = QAction(self.style().standardIcon(QStyle.SP_ArrowBack), 'Back', self)
         back_button.triggered.connect(lambda: self.tabs.currentWidget().back())
         navbar.addAction(back_button)
 
-        # Add forward button
         forward_button = QAction(self.style().standardIcon(QStyle.SP_ArrowForward), 'Forward', self)
         forward_button.triggered.connect(lambda: self.tabs.currentWidget().forward())
         navbar.addAction(forward_button)
 
-        # Add reload button
         reload_button = QAction(self.style().standardIcon(QStyle.SP_BrowserReload), 'Reload', self)
         reload_button.triggered.connect(lambda: self.tabs.currentWidget().reload())
         navbar.addAction(reload_button)
 
-        # Add home button
         home_button = QAction(self.style().standardIcon(QStyle.SP_DirHomeIcon), 'Home', self)
         home_button.triggered.connect(self.navigate_home)
         navbar.addAction(home_button)
 
-        # Add stop button
         stop_button = QAction(self.style().standardIcon(QStyle.SP_BrowserStop), 'Stop', self)
         stop_button.triggered.connect(lambda: self.tabs.currentWidget().stop())
         navbar.addAction(stop_button)
 
-        # Add address bar
-        self.url_bar = QLineEdit(self)
-        self.url_bar.setStyleSheet("padding: 5px;")
+        self.url_bar = QLineEdit()
         self.url_bar.returnPressed.connect(self.load_url_from_address_bar)
         navbar.addWidget(self.url_bar)
 
-        # Add search engine selection
-        self.search_engine = QComboBox(self)
+        self.search_engine = QComboBox()
         self.search_engine.addItems(["Google", "Bing", "DuckDuckGo"])
         navbar.addWidget(self.search_engine)
 
-        # Add bookmarks button
         bookmarks_button = QAction(self.style().standardIcon(QStyle.SP_FileDialogListView), 'Bookmarks', self)
         bookmarks_button.triggered.connect(self.show_bookmarks)
         navbar.addAction(bookmarks_button)
 
-        # Add dark mode toggle
-        self.dark_mode = QAction(self.style().standardIcon(QStyle.SP_DialogYesButton), 'Dark Mode', self, checkable=True)
-        self.dark_mode.triggered.connect(self.toggle_dark_mode)
-        navbar.addAction(self.dark_mode)
+        dark_mode_button = QAction(self.style().standardIcon(QStyle.SP_DialogYesButton), 'Dark Mode', self, checkable=True)
+        dark_mode_button.triggered.connect(self.toggle_dark_mode)
+        navbar.addAction(dark_mode_button)
 
-        # Add download manager button
         download_manager_button = QAction(self.style().standardIcon(QStyle.SP_DriveHDIcon), 'Downloads', self)
         download_manager_button.triggered.connect(self.show_downloads)
         navbar.addAction(download_manager_button)
 
-        # Add history button
         history_button = QAction(self.style().standardIcon(QStyle.SP_FileDialogDetailedView), 'History', self)
         history_button.triggered.connect(self.show_history)
         navbar.addAction(history_button)
 
-        # Add settings button
         settings_button = QAction(self.style().standardIcon(QStyle.SP_FileDialogContentsView), 'Settings', self)
         settings_button.triggered.connect(self.show_settings)
         navbar.addAction(settings_button)
 
-        # Initialize bookmarks
-        self.bookmarks = []
-
-        # Initialize history
-        self.history = []
-
-        # Initialize downloads
-        self.downloads = []
-
-        # Add a new tab
-        self.add_new_tab(QUrl('http://www.google.com'), 'Homepage')
-
-        # Add status bar
-        self.status = QStatusBar()
-        self.setStatusBar(self.status)
+    def init_signals(self):
+        self.tabs.tabBarDoubleClicked.connect(self.tab_open_doubleclick)
+        self.tabs.currentChanged.connect(self.current_tab_changed)
+        self.tabs.tabCloseRequested.connect(self.close_current_tab)
+        self.tabs.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.tabs.customContextMenuRequested.connect(self.tab_context_menu)
 
     def create_new_tab_button(self):
         new_tab_button = QPushButton("+")
@@ -135,9 +107,7 @@ class Browser(QMainWindow):
         browser.urlChanged.connect(lambda qurl, browser=browser: self.update_urlbar(qurl, browser))
         browser.loadFinished.connect(lambda _, i=i, browser=browser: self.tabs.setTabText(i, browser.page().title()))
 
-        # Connect download requested signal
         browser.page().profile().downloadRequested.connect(self.handle_download)
-        # Connect load progress signal
         browser.loadProgress.connect(self.update_status)
 
     def tab_open_doubleclick(self, i):
@@ -149,10 +119,6 @@ class Browser(QMainWindow):
             qurl = self.tabs.currentWidget().url()
             self.update_urlbar(qurl, self.tabs.currentWidget())
             self.update_title(self.tabs.currentWidget())
-
-            # Update connections to the current tab's signals
-            self.tabs.currentWidget().urlChanged.connect(lambda qurl: self.update_urlbar(qurl, self.tabs.currentWidget()))
-            self.tabs.currentWidget().loadProgress.connect(self.update_status)
 
     def close_current_tab(self, i):
         if self.tabs.count() < 2:
@@ -230,18 +196,18 @@ class Browser(QMainWindow):
         progress_dialog.setWindowModality(Qt.WindowModal)
         progress_dialog.setAutoClose(True)
         progress_dialog.setAutoReset(True)
-        
+
         def update_progress(received, total):
             if total > 0:
                 progress_value = int(received / total * 100)
                 progress_dialog.setValue(progress_value)
             else:
                 progress_dialog.setValue(0)
-        
+
         download.downloadProgress.connect(update_progress)
         download.finished.connect(progress_dialog.close)
         download.finished.connect(lambda: QMessageBox.information(self, "Download Completed", f"Download finished: {download.path()}"))
-        
+
         progress_dialog.show()
 
     def show_downloads(self):
@@ -285,6 +251,13 @@ class Browser(QMainWindow):
     def save_settings(self):
         homepage_url = self.homepage_input.text()
         self.tabs.currentWidget().setUrl(QUrl(homepage_url))
+
+def main():
+    QCoreApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+    app = QApplication(sys.argv)
+    window = Browser()
+    window.show()
+    sys.exit(app.exec_())
 
 if __name__ == '__main__':
     main()
