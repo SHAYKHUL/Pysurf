@@ -1,19 +1,40 @@
 import sys
+import json  # Add this import at the top of the file
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtWebEngineWidgets import *
 from PyQt5.QtGui import QIcon
+from PyQt5.QtWebEngineCore import QWebEngineUrlRequestInterceptor
 
 def main():
     QCoreApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+    QCoreApplication.setAttribute(Qt.AA_UseSoftwareOpenGL, False)  # Enable software rendering
+    QApplication.setApplicationName("Python Web Browser")
+    QApplication.setOrganizationName("YourOrganization")
+    QApplication.setOrganizationDomain("yourdomain.com")
+
+    # Disable GPU acceleration
+    import os
+    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu"
+
     app = QApplication(sys.argv)
     window = Browser()
     window.show()
     sys.exit(app.exec_())
 
+class RequestInterceptor(QWebEngineUrlRequestInterceptor):
+    def interceptRequest(self, info):
+        url = info.requestUrl().toString()
+        if "ads" in url or "tracker" in url:
+            info.block(True)  # Block the request
+
 class Browser(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.config_file = "browser_config.json"
+        
+        # Load configuration
+        self.load_config()
 
         # Set up the browser window
         self.setWindowTitle("Python Web Browser")
@@ -40,28 +61,24 @@ class Browser(QMainWindow):
         navbar.setStyleSheet("background-color: #f0f0f0; padding: 5px;")
         self.addToolBar(navbar)
 
-        # Add back button
-        back_button = QAction(self.style().standardIcon(QStyle.SP_ArrowBack), 'Back', self)
+        # Update navigation bar buttons with modern icons
+        back_button = QAction(QIcon("icons/back.png"), 'Back', self)
         back_button.triggered.connect(lambda: self.tabs.currentWidget().back())
         navbar.addAction(back_button)
 
-        # Add forward button
-        forward_button = QAction(self.style().standardIcon(QStyle.SP_ArrowForward), 'Forward', self)
+        forward_button = QAction(QIcon("icons/forward.png"), 'Forward', self)
         forward_button.triggered.connect(lambda: self.tabs.currentWidget().forward())
         navbar.addAction(forward_button)
 
-        # Add reload button
-        reload_button = QAction(self.style().standardIcon(QStyle.SP_BrowserReload), 'Reload', self)
+        reload_button = QAction(QIcon("icons/reload.png"), 'Reload', self)
         reload_button.triggered.connect(lambda: self.tabs.currentWidget().reload())
         navbar.addAction(reload_button)
 
-        # Add home button
-        home_button = QAction(self.style().standardIcon(QStyle.SP_DirHomeIcon), 'Home', self)
+        home_button = QAction(QIcon("icons/home.png"), 'Home', self)
         home_button.triggered.connect(self.navigate_home)
         navbar.addAction(home_button)
 
-        # Add stop button
-        stop_button = QAction(self.style().standardIcon(QStyle.SP_BrowserStop), 'Stop', self)
+        stop_button = QAction(QIcon("icons/stop.png"), 'Stop', self)
         stop_button.triggered.connect(lambda: self.tabs.currentWidget().stop())
         navbar.addAction(stop_button)
 
@@ -111,15 +128,98 @@ class Browser(QMainWindow):
         self.downloads = []
 
         # Add a new tab
-        self.add_new_tab(QUrl('http://www.google.com'), 'Homepage')
+        # Replace the default homepage with the loaded homepage
+        homepage_url = self.config.get("homepage", "http://www.google.com")
+        self.add_new_tab(QUrl(homepage_url), 'Homepage')
 
         # Add status bar
         self.status = QStatusBar()
         self.setStatusBar(self.status)
 
+        self.closed_tabs = []  # Store closed tabs
+
+        # Set the initial style
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #f5f5f5;
+            }
+            QToolBar {
+                background-color: #ffffff;
+                border: 1px solid #dcdcdc;
+                padding: 5px;
+            }
+            QTabBar::tab {
+                background: #e0e0e0;
+                padding: 8px;
+                margin: 2px;
+                border-radius: 10px;
+                font-size: 14px;
+            }
+            QTabBar::tab:selected {
+                background: #ffffff;
+                font-weight: bold;
+            }
+            QLineEdit {
+                border: 1px solid #dcdcdc;
+                border-radius: 5px;
+                padding: 5px;
+                font-size: 14px;
+            }
+            QPushButton {
+                background-color: #0078d7;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 5px 10px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #005a9e;
+            }
+            QLabel {
+                font-size: 14px;
+            }
+        """)
+
+        # Restore session
+        self.restore_session()
+
+        # Enable disk caching
+        profile = QWebEngineProfile.defaultProfile()
+        cache_path = QStandardPaths.writableLocation(QStandardPaths.CacheLocation)
+        profile.setCachePath(cache_path)
+        profile.setPersistentStoragePath(cache_path)
+        profile.setHttpCacheType(QWebEngineProfile.DiskHttpCache)
+        profile.setHttpCacheMaximumSize(100 * 1024 * 1024)  # Set cache size to 100 MB
+
+        profile.settings().setAttribute(QWebEngineSettings.JavascriptEnabled, True)
+        profile.settings().setAttribute(QWebEngineSettings.JavascriptCanOpenWindows, False)
+
+        # Enable request interception
+        self.interceptor = RequestInterceptor()
+        profile.setUrlRequestInterceptor(self.interceptor)  # Updated method
+
+    def preload_dns(self, domains):
+        for domain in domains:
+            QHostInfo.lookupHost(domain, lambda info: None)
+
     def create_new_tab_button(self):
-        new_tab_button = QPushButton("+")
-        new_tab_button.setFixedSize(30, 30)
+        new_tab_button = QPushButton("+", self)
+        new_tab_button.setStyleSheet("""
+            QPushButton {
+                background-color: #0078d7;
+                color: white;
+                border: none;
+                border-radius: 15px;
+                font-size: 18px;
+                font-weight: bold;
+                width: 30px;
+                height: 30px;
+            }
+            QPushButton:hover {
+                background-color: #005a9e;
+            }
+        """)
         new_tab_button.clicked.connect(self.add_new_tab)
         return new_tab_button
 
@@ -128,9 +228,11 @@ class Browser(QMainWindow):
             qurl = QUrl('http://www.google.com')
 
         browser = QWebEngineView()
-        browser.setUrl(qurl)
         i = self.tabs.addTab(browser, label)
         self.tabs.setCurrentIndex(i)
+
+        # Explicitly load the URL when the tab is created
+        browser.setUrl(qurl)
 
         browser.urlChanged.connect(lambda qurl, browser=browser: self.update_urlbar(qurl, browser))
         browser.loadFinished.connect(lambda _, i=i, browser=browser: self.tabs.setTabText(i, browser.page().title()))
@@ -139,6 +241,11 @@ class Browser(QMainWindow):
         browser.page().profile().downloadRequested.connect(self.handle_download)
         # Connect load progress signal
         browser.loadProgress.connect(self.update_status)
+
+        # Enable request interception
+        self.interceptor = RequestInterceptor()
+        profile = QWebEngineProfile.defaultProfile()
+        profile.setRequestInterceptor(self.interceptor)
 
     def tab_open_doubleclick(self, i):
         if i == -1:
@@ -155,16 +262,30 @@ class Browser(QMainWindow):
             self.tabs.currentWidget().loadProgress.connect(self.update_status)
 
     def close_current_tab(self, i):
+        """Close the tab at the given index."""
         if self.tabs.count() < 2:
+            QMessageBox.warning(self, "Warning", "Cannot close the last tab!")
             return
+
+        # Remove the tab immediately
+        widget = self.tabs.widget(i)
+        if widget:
+            widget.deleteLater()
         self.tabs.removeTab(i)
 
+    def reopen_closed_tab(self):
+        if self.closed_tabs:
+            url, label = self.closed_tabs.pop()
+            self.add_new_tab(QUrl(url), label)
+
     def tab_context_menu(self, point):
-        context_menu = QMenu(self)
-        new_tab_action = QAction('New Tab', self)
-        new_tab_action.triggered.connect(self.add_new_tab)
-        context_menu.addAction(new_tab_action)
-        context_menu.exec_(self.tabs.mapToGlobal(point))
+        index = self.tabs.tabBar().tabAt(point)
+        if index != -1:
+            browser = self.tabs.widget(index)
+            thumbnail = browser.grab()  # Capture a thumbnail of the tab
+            thumbnail_label = QLabel()
+            thumbnail_label.setPixmap(thumbnail.scaled(200, 150, Qt.KeepAspectRatio))
+            thumbnail_label.show()
 
     def update_urlbar(self, qurl, browser=None):
         if browser != self.tabs.currentWidget():
@@ -195,18 +316,35 @@ class Browser(QMainWindow):
         self.tabs.currentWidget().setUrl(QUrl("http://www.google.com"))
 
     def update_status(self, progress):
-        self.status.showMessage(f"Loading... {progress}%")
+        if not hasattr(self, 'progress_bar'):
+            self.progress_bar = QProgressBar(self)
+            self.progress_bar.setMaximum(100)
+            self.statusBar().addWidget(self.progress_bar, 1)
+
+        self.progress_bar.setValue(progress)
+        if progress == 100:
+            self.progress_bar.hide()
+        else:
+            self.progress_bar.show()
 
     def show_bookmarks(self):
         bookmarks_dialog = QDialog(self)
         bookmarks_dialog.setWindowTitle("Bookmarks")
         layout = QVBoxLayout()
         for bookmark in self.bookmarks:
+            bookmark_layout = QHBoxLayout()
             btn = QPushButton(bookmark, self)
             btn.clicked.connect(lambda _, url=bookmark: self.tabs.currentWidget().setUrl(QUrl(url)))
-            layout.addWidget(btn)
+            delete_btn = QPushButton("Delete", self)
+            delete_btn.clicked.connect(lambda _, url=bookmark: self.delete_bookmark(url))
+            bookmark_layout.addWidget(btn)
+            bookmark_layout.addWidget(delete_btn)
+            layout.addLayout(bookmark_layout)
         bookmarks_dialog.setLayout(layout)
         bookmarks_dialog.exec_()
+
+    def delete_bookmark(self, url):
+        self.bookmarks.remove(url)
 
     def toggle_dark_mode(self):
         if self.dark_mode.isChecked():
@@ -219,9 +357,9 @@ class Browser(QMainWindow):
     def handle_download(self, download):
         download_path, _ = QFileDialog.getSaveFileName(self, "Save File", download.path())
         if download_path:
-            download.setPath(download_path)
-            self.downloads.append(download_path)
+            download.setPath(download_path)  # Set the path before accepting the download
             download.accept()
+            self.downloads.append(download_path)
             self.show_download_progress(download)
 
     def show_download_progress(self, download):
@@ -282,9 +420,70 @@ class Browser(QMainWindow):
         settings_dialog.setLayout(layout)
         settings_dialog.exec_()
 
+    def load_config(self):
+        try:
+            with open(self.config_file, "r") as file:
+                self.config = json.load(file)
+        except FileNotFoundError:
+            self.config = {"homepage": "http://www.google.com"}
+
+    def save_config(self):
+        with open(self.config_file, "w") as file:
+            json.dump(self.config, file)
+
     def save_settings(self):
         homepage_url = self.homepage_input.text()
+        self.config["homepage"] = homepage_url
+        self.save_config()
         self.tabs.currentWidget().setUrl(QUrl(homepage_url))
 
+    def save_session(self):
+        session = [{"url": self.tabs.widget(i).url().toString(), "title": self.tabs.tabText(i)} for i in range(self.tabs.count())]
+        with open("session.json", "w") as file:
+            json.dump(session, file)
+
+    def restore_session(self):
+        try:
+            with open("session.json", "r") as file:
+                session = json.load(file)
+                for tab in session:
+                    self.add_new_tab(QUrl(tab["url"]), tab["title"])
+        except FileNotFoundError:
+            pass
+
+    def handle_request_intercept(self, request):
+        url = request.requestUrl().toString()
+        if "tracker" in url:
+            request.abort()
+
+    def create_sidebar(self):
+        self.sidebar = QDockWidget("Sidebar", self)
+        self.sidebar.setAllowedAreas(Qt.LeftDockWidgetArea | Qt.RightDockWidgetArea)
+        self.sidebar.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetClosable)
+
+        sidebar_widget = QWidget()
+        sidebar_layout = QVBoxLayout()
+
+        bookmarks_label = QLabel("Bookmarks")
+        bookmarks_label.setStyleSheet("font-weight: bold; font-size: 16px;")
+        sidebar_layout.addWidget(bookmarks_label)
+
+        for bookmark in self.bookmarks:
+            btn = QPushButton(bookmark, self)
+            btn.clicked.connect(lambda _, url=bookmark: self.tabs.currentWidget().setUrl(QUrl(url)))
+            sidebar_layout.addWidget(btn)
+
+        history_label = QLabel("History")
+        history_label.setStyleSheet("font-weight: bold; font-size: 16px; margin-top: 10px;")
+        sidebar_layout.addWidget(history_label)
+
+        for url in self.history:
+            btn = QPushButton(url, self)
+            btn.clicked.connect(lambda _, url=url: self.tabs.currentWidget().setUrl(QUrl(url)))
+            sidebar_layout.addWidget(btn)
+
+        sidebar_widget.setLayout(sidebar_layout)
+        self.sidebar.setWidget(sidebar_widget)
+        self.addDockWidget(Qt.LeftDockWidgetArea, self.sidebar)
 if __name__ == '__main__':
     main()
